@@ -36,7 +36,7 @@ function cardRodada(r, players, participants, ind, team) {
     <div class="card-head">
       <span>${fmtData(r.data)}</span>
       <span class="rodada-acoes">
-        <a href="#/nova-rodada/${r.id}">editar</a>
+        <a href="#/rodada/${r.id}">abrir</a>
         <a href="#" data-del="${r.id}" class="link-del">excluir</a>
       </span>
     </div>

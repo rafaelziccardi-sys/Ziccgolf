@@ -2,7 +2,7 @@
 //  MOTOR DE PONTUAÇÃO E RANKINGS  (funções puras, sem dependências)
 //  Recebe os dados crus do banco e devolve colocações, pontos e rankings.
 // =============================================================
-import { PONTOS, QUALIFICACAO_PCT, QUALIFICACAO_MIN } from "./config.js";
+import { PONTOS, QUALIFICACAO_PCT, QUALIFICACAO_MIN, PAR_BURACOS } from "./config.js";
 
 // ---- Colocação de Stroke Play (menor score = melhor; empates dividem posição) ----
 // participantes: [{player_id, gross_score}]  ->  Map player_id -> posicao
@@ -46,7 +46,7 @@ export function pontosMatchDupla(resultado, lado) {
 //  AGREGAÇÃO ANUAL
 //  Entrada: arrays do banco. Saída: 1 objeto de stats por jogador.
 // =============================================================
-export function agregarTemporada({ players, rounds, participants, indMatches, teamMatches }) {
+export function agregarTemporada({ players, rounds, participants, indMatches, teamMatches, holes }) {
   const stats = new Map();
   const novo = (p) => ({
     player: p,
@@ -62,6 +62,9 @@ export function agregarTemporada({ players, rounds, participants, indMatches, te
     dupV: 0, dupE: 0, dupD: 0,
     // técnicas
     putts: [], girPct: [], fairwayPct: [],
+    // por buraco (modo detalhado)
+    eagles: 0, birdies: 0, parsFeitos: 0, bogeys: 0, doubles: 0,
+    buracosJogados: 0, scoreVsPar: 0,
     // relações
     h2h: new Map(),        // adversário_id -> {v,e,d}
     parceiros: new Map(),  // parceiro_id -> {v,e,d}
@@ -121,6 +124,18 @@ export function agregarTemporada({ players, rounds, participants, indMatches, te
         if (empate) rel.e++; else if (venceu) rel.v++; else rel.d++;
       }
     }
+  }
+
+  // ---- Por buraco: birdies/pars/bogeys + score vs par ----
+  for (const hb of holes || []) {
+    const s = stats.get(hb.player_id);
+    if (!s || hb.strokes == null) continue;
+    const par = PAR_BURACOS[hb.buraco - 1];
+    if (!par) continue;
+    const d = hb.strokes - par;
+    s.buracosJogados++; s.scoreVsPar += d;
+    if (d <= -2) s.eagles++; else if (d === -1) s.birdies++;
+    else if (d === 0) s.parsFeitos++; else if (d === 1) s.bogeys++; else s.doubles++;
   }
 
   // ---- Totais e derivados ----

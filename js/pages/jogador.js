@@ -67,6 +67,18 @@ export default async function renderJogador(app, params) {
       </div>
     </div>
 
+    ${s.buracosJogados ? `<div class="card-box">
+      <div class="card-head"><span>Por buraco (${s.buracosJogados} buracos)</span></div>
+      <div class="grid-stats">
+        ${card("Eagles", fmtInt(s.eagles))}
+        ${card("Birdies", fmtInt(s.birdies))}
+        ${card("Pars", fmtInt(s.parsFeitos))}
+        ${card("Bogeys", fmtInt(s.bogeys))}
+        ${card("Doubles +", fmtInt(s.doubles))}
+        ${card("Score vs par", (s.scoreVsPar > 0 ? "+" : "") + s.scoreVsPar, "acumulado no ano")}
+      </div>
+    </div>` : ""}
+
     ${s.h2h.size ? `<div class="card-box">
       <div class="card-head"><span>Head-to-head (Match individual)</span></div>
       <div class="tabela-wrap"><table class="tabela"><thead><tr><th>Adversário</th><th>V</th><th>E</th><th>D</th></tr></thead>

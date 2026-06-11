@@ -3,27 +3,36 @@
 // =============================================================
 import { APP_NOME, SUPABASE_URL } from "./config.js";
 import { usuarioAtual, entrar, cadastrar, sair, aoMudarLogin } from "./auth.js";
+import { meuJogador, criarMeuJogador, meusGrupos, grupoAtual, setGrupoAtual } from "./db.js";
 import { demoAtivo, sairDemo } from "./demo.js";
-import { h, toast } from "./ui.js";
+import { h, toast, esc } from "./ui.js";
 
 import renderHome from "./pages/home.js";
 import renderRankings from "./pages/rankings.js";
 import renderNovaRodada from "./pages/novaRodada.js";
+import renderRodada from "./pages/rodada.js";
 import renderRodadas from "./pages/rodadas.js";
 import renderJogadores from "./pages/jogadores.js";
 import renderJogador from "./pages/jogador.js";
 import renderStats from "./pages/stats.js";
+import renderGrupos from "./pages/grupos.js";
+import renderAdmin from "./pages/admin.js";
 
 const rotas = {
   "": renderHome,
   "home": renderHome,
   "rankings": renderRankings,
   "nova-rodada": renderNovaRodada,
+  "rodada": renderRodada,
   "rodadas": renderRodadas,
   "jogadores": renderJogadores,
   "jogador": renderJogador,
   "stats": renderStats,
+  "grupos": renderGrupos,
+  "admin": renderAdmin,
 };
+
+let GRUPOS = [];   // grupos aprovados do usuário (cache da sessão)
 
 const app = document.getElementById("app");
 const nav = document.getElementById("nav");
@@ -52,25 +61,71 @@ function marcarNavAtivo(rota) {
   });
 }
 
-function montarLogado(user) {
+async function montarLogado(user) {
   document.body.classList.add("logado");
+  atualizarBannerDemo();
+
+  if (demoAtivo()) {
+    GRUPOS = [{ id: "demo", nome: "Grupo Demo", role: "admin" }];
+    setGrupoAtual("demo");
+    return montarNav(GRUPOS[0]);
+  }
+
+  // 1º login: ainda não tem jogador vinculado -> cria o perfil
+  let jog = null;
+  try { jog = await meuJogador(); } catch (e) { console.error(e); }
+  if (!jog) return montarPerfilInicial();
+
+  // precisa estar aprovado em ao menos um grupo
+  try { GRUPOS = await meusGrupos(); } catch (e) { console.error(e); GRUPOS = []; }
+  if (!GRUPOS.length) {
+    nav.innerHTML = `<a data-rota="grupos" href="#/grupos" class="ativo">Grupos</a><a href="#" id="btn-sair" class="nav-sair">Sair</a>`;
+    ligarSair();
+    location.hash = "#/grupos";
+    rotear();
+    return;
+  }
+
+  // garante um grupo atual válido
+  let atualId = grupoAtual();
+  if (!atualId || !GRUPOS.some(g => g.id === atualId)) { atualId = GRUPOS[0].id; setGrupoAtual(atualId); }
+  montarNav(GRUPOS.find(g => g.id === atualId));
+}
+
+function montarNav(grupoSel) {
+  const ehAdmin = grupoSel?.role === "admin";
+  const seletor = GRUPOS.length > 1
+    ? `<select id="sel-grupo" class="nav-grupo">${GRUPOS.map(g => `<option value="${g.id}" ${g.id === grupoSel.id ? "selected" : ""}>${esc(g.nome)}</option>`).join("")}</select>`
+    : `<a data-rota="grupos" href="#/grupos" class="nav-grupo-nome">${esc(grupoSel?.nome || "")}</a>`;
   nav.innerHTML = `
+    ${seletor}
     <a data-rota="home" href="#/home">Início</a>
     <a data-rota="rankings" href="#/rankings">Rankings</a>
     <a data-rota="nova-rodada" href="#/nova-rodada" class="nav-cta">+ Rodada</a>
     <a data-rota="rodadas" href="#/rodadas">Rodadas</a>
     <a data-rota="stats" href="#/stats">Estatísticas</a>
     <a data-rota="jogadores" href="#/jogadores">Jogadores</a>
+    ${ehAdmin ? `<a data-rota="admin" href="#/admin" class="nav-admin">Admin</a>` : ""}
+    <a data-rota="grupos" href="#/grupos">Grupos</a>
     <a href="#" id="btn-sair" class="nav-sair">Sair</a>`;
-  nav.querySelector("#btn-sair").onclick = async (e) => {
+  ligarSair();
+  const sel = nav.querySelector("#sel-grupo");
+  if (sel) sel.onchange = () => { setGrupoAtual(sel.value); location.hash = "#/home"; montarLogado({}); };
+  if (!location.hash) location.hash = "#/home";
+  rotear();
+}
+
+function ligarSair() {
+  const b = nav.querySelector("#btn-sair");
+  if (b) b.onclick = async (e) => {
     e.preventDefault();
     if (demoAtivo()) { sairDemo(); location.href = location.pathname; return; }
     await sair();
   };
-  atualizarBannerDemo();
-  if (!location.hash) location.hash = "#/home";
-  rotear();
 }
+
+// exposto p/ páginas saberem o papel no grupo atual
+export function grupoSelecionado() { return GRUPOS.find(g => g.id === grupoAtual()) || null; }
 
 function atualizarBannerDemo() {
   let banner = document.getElementById("demo-banner");
@@ -81,6 +136,37 @@ function atualizarBannerDemo() {
       banner.querySelector("#sair-demo").onclick = (e) => { e.preventDefault(); sairDemo(); location.href = location.pathname; };
     }
   } else if (banner) banner.remove();
+}
+
+function montarPerfilInicial() {
+  nav.innerHTML = "";
+  app.innerHTML = `
+    <div class="login-wrap">
+      <div class="login-card">
+        <div class="login-logo">⛳</div>
+        <h1>Crie seu jogador</h1>
+        <p class="login-sub">Esse será o seu perfil no grupo</p>
+        <form id="form-perfil">
+          <input type="text" id="p-nome" placeholder="Seu nome" required autocomplete="name">
+          <input type="url" id="p-foto" placeholder="Foto (URL, opcional)">
+          <input type="number" step="0.1" id="p-hcp" placeholder="Handicap (opcional)">
+          <button type="submit" class="btn btn-primary">Criar e entrar</button>
+        </form>
+        <div class="login-demo"><a href="#" id="perfil-sair">Sair</a></div>
+      </div>
+    </div>`;
+  app.querySelector("#perfil-sair").onclick = async (e) => { e.preventDefault(); await sair(); };
+  app.querySelector("#form-perfil").onsubmit = async (e) => {
+    e.preventDefault();
+    const nome = app.querySelector("#p-nome").value.trim();
+    if (!nome) return toast("Informe seu nome", "erro");
+    const btn = e.submitter; btn.disabled = true; btn.textContent = "Criando...";
+    try {
+      await criarMeuJogador({ nome, foto_url: app.querySelector("#p-foto").value.trim(), handicap: app.querySelector("#p-hcp").value || null });
+      toast("Jogador criado! 🏌️");
+      montarLogado({});
+    } catch (err) { console.error(err); toast(err.message || "Erro ao criar jogador", "erro"); btn.disabled = false; btn.textContent = "Criar e entrar"; }
+  };
 }
 
 function montarLogin() {

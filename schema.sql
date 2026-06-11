@@ -5,13 +5,15 @@
 
 -- ---------- JOGADORES ----------
 create table if not exists players (
-  id          uuid primary key default gen_random_uuid(),
-  nome        text not null,
-  foto_url    text,
-  handicap    numeric,
-  ativo       boolean not null default true,
-  criado_em   timestamptz not null default now()
+  id            uuid primary key default gen_random_uuid(),
+  nome          text not null,
+  foto_url      text,
+  handicap      numeric,
+  ativo         boolean not null default true,
+  auth_user_id  uuid references auth.users(id) on delete set null,  -- conta de login vinculada
+  criado_em     timestamptz not null default now()
 );
+create unique index if not exists uq_players_auth on players(auth_user_id) where auth_user_id is not null;
 
 -- ---------- RODADAS ----------
 create table if not exists rounds (
@@ -35,6 +37,7 @@ create table if not exists round_participants (
   fairways_tot  int,            -- fairways possíveis (ex: 14)
   gir           int,            -- greens in regulation acertados
   gir_tot       int default 18, -- greens possíveis
+  bunker_total int default 0,    -- tacadas dadas de dentro do bunker (areia)
   pontos_stroke      int default 0,
   pontos_match_ind   int default 0,
   pontos_match_dupla int default 0,
@@ -50,6 +53,7 @@ create table if not exists hole_scores (
   par          int,
   strokes      int,
   putts        int,
+  bunker       int default 0,    -- tacadas dadas de dentro do bunker (areia)
   fairway_hit  boolean,
   gir          boolean,
   penalidades  int default 0,
@@ -97,14 +101,35 @@ alter table hole_scores        enable row level security;
 alter table individual_matches enable row level security;
 alter table team_matches       enable row level security;
 
+-- Leitura: todo mundo logado vê tudo (placar ao vivo do grupo).
 do $$
 declare t text;
 begin
   foreach t in array array['players','rounds','round_participants','hole_scores','individual_matches','team_matches']
   loop
-    execute format(
-      'create policy "grupo_logado_le"  on %I for select using (auth.role() = ''authenticated'');', t);
-    execute format(
-      'create policy "grupo_logado_escreve" on %I for all using (auth.role() = ''authenticated'') with check (auth.role() = ''authenticated'');', t);
+    execute format('create policy "grupo_logado_le" on %I for select using (auth.role() = ''authenticated'');', t);
   end loop;
 end $$;
+
+-- Escrita ampla (qualquer logado): rodadas e confrontos.
+create policy "grupo_logado_escreve" on rounds            for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "grupo_logado_escreve" on individual_matches for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "grupo_logado_escreve" on team_matches       for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+
+-- Helper: o jogador "pid" pertence ao usuário logado?
+create or replace function public.is_my_player(pid uuid)
+returns boolean language sql security definer stable as $$
+  select exists (select 1 from players p where p.id = pid and p.auth_user_id = auth.uid());
+$$;
+
+-- Escrita restrita ao dono: cada conta só cria/edita o PRÓPRIO jogador e score.
+create policy players_insert_own on players for insert with check (auth_user_id = auth.uid());
+create policy players_update_own on players for update using (auth_user_id = auth.uid()) with check (auth_user_id = auth.uid());
+
+create policy rp_insert_own on round_participants for insert with check (is_my_player(player_id));
+create policy rp_update_own on round_participants for update using (is_my_player(player_id)) with check (is_my_player(player_id));
+create policy rp_delete_own on round_participants for delete using (is_my_player(player_id));
+
+create policy hs_insert_own on hole_scores for insert with check (is_my_player(player_id));
+create policy hs_update_own on hole_scores for update using (is_my_player(player_id)) with check (is_my_player(player_id));
+create policy hs_delete_own on hole_scores for delete using (is_my_player(player_id));

@@ -22,7 +22,7 @@ export default async function renderHome(app) {
     const dup = teamMatches.filter(m => m.round_id === ultima.id);
     blocoUltima = `
       <div class="card-box">
-        <div class="card-head"><span>Última rodada · ${fmtData(ultima.data)}</span><a href="#/rodadas">ver todas</a></div>
+        <div class="card-head"><a href="#/rodada/${ultima.id}">Última rodada · ${fmtData(ultima.data)}</a><a href="#/rodadas">ver todas</a></div>
         ${vencedor ? `<div class="destaque-vencedor">
             ${avatar(playersById.get(vencedor.player_id), 48)}
             <div><div class="dv-label">🏆 Vencedor Stroke Play</div>
