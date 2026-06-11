@@ -1,0 +1,4 @@
+# nada sensível por aqui; a anon key do Supabase é pública por design.
+.DS_Store
+Thumbs.db
+*.log
