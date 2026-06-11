@@ -21,6 +21,9 @@ export const PONTOS = {
   matchDupla: { vitoria: 2, empate: 1, derrota: 0 },
 };
 
+// Ranking GERAL conta só o Stroke Play? (true = só stroke; false = soma match play)
+export const RANKING_INCLUI_MATCH = false;
+
 // Ranking oficial = média de pontos/rodada.
 // Para se qualificar, jogar pelo menos este % das rodadas do ano (mín. 3).
 export const QUALIFICACAO_PCT = 0.30;

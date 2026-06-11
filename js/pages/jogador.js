@@ -1,5 +1,6 @@
 import { carregarTemporada } from "../db.js";
 import { agregarTemporada, montarRankings } from "../scoring.js";
+import { RANKING_INCLUI_MATCH } from "../config.js";
 import { esc, fmt, fmtInt, fmtData, avatar, card, nomeJogador, loading, anoAtual } from "../ui.js";
 
 export default async function renderJogador(app, params) {
@@ -32,7 +33,7 @@ export default async function renderJogador(app, params) {
     </section>
 
     <div class="grid-stats">
-      ${card("Pontos totais", fmtInt(s.pontosTotal), `Stroke ${fmtInt(s.pontosStroke)} · Indiv ${fmtInt(s.pontosInd)} · Duplas ${fmtInt(s.pontosDupla)}`)}
+      ${card("Pontos totais", fmtInt(s.pontosTotal), RANKING_INCLUI_MATCH ? `Stroke ${fmtInt(s.pontosStroke)} · Indiv ${fmtInt(s.pontosInd)} · Duplas ${fmtInt(s.pontosDupla)}` : "só Stroke Play")}
       ${card("Pts / rodada", fmt(s.mediaPontos))}
       ${card("Vit. Stroke", fmtInt(s.strokeVitorias))}
       ${card("Top 3", fmtInt(s.top3))}

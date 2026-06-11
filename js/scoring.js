@@ -2,7 +2,7 @@
 //  MOTOR DE PONTUAÇÃO E RANKINGS  (funções puras, sem dependências)
 //  Recebe os dados crus do banco e devolve colocações, pontos e rankings.
 // =============================================================
-import { PONTOS, QUALIFICACAO_PCT, QUALIFICACAO_MIN, PAR_BURACOS } from "./config.js";
+import { PONTOS, QUALIFICACAO_PCT, QUALIFICACAO_MIN, PAR_BURACOS, RANKING_INCLUI_MATCH } from "./config.js";
 
 // ---- Colocação de Stroke Play (menor score = melhor; empates dividem posição) ----
 // participantes: [{player_id, gross_score}]  ->  Map player_id -> posicao
@@ -140,7 +140,7 @@ export function agregarTemporada({ players, rounds, participants, indMatches, te
 
   // ---- Totais e derivados ----
   for (const s of stats.values()) {
-    s.pontosTotal = s.pontosStroke + s.pontosInd + s.pontosDupla;
+    s.pontosTotal = s.pontosStroke + (RANKING_INCLUI_MATCH ? s.pontosInd + s.pontosDupla : 0);
     s.mediaPontos = s.rodadas ? s.pontosTotal / s.rodadas : 0;
     s.scoreMedio  = media(s.scores);
     s.melhorScore = s.scores.length ? Math.min(...s.scores) : null;

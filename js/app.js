@@ -17,6 +17,7 @@ import renderJogador from "./pages/jogador.js";
 import renderStats from "./pages/stats.js";
 import renderGrupos from "./pages/grupos.js";
 import renderAdmin from "./pages/admin.js";
+import renderRegras from "./pages/regras.js";
 
 const rotas = {
   "": renderHome,
@@ -28,6 +29,7 @@ const rotas = {
   "jogadores": renderJogadores,
   "jogador": renderJogador,
   "stats": renderStats,
+  "regras": renderRegras,
   "grupos": renderGrupos,
   "admin": renderAdmin,
 };
@@ -105,6 +107,7 @@ function montarNav(grupoSel) {
     <a data-rota="rodadas" href="#/rodadas">Rodadas</a>
     <a data-rota="stats" href="#/stats">Estatísticas</a>
     <a data-rota="jogadores" href="#/jogadores">Jogadores</a>
+    <a data-rota="regras" href="#/regras">Regras</a>
     ${ehAdmin ? `<a data-rota="admin" href="#/admin" class="nav-admin">Admin</a>` : ""}
     <a data-rota="grupos" href="#/grupos">Grupos</a>
     <a href="#" id="btn-sair" class="nav-sair">Sair</a>`;
