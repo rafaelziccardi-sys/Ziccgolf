@@ -24,10 +24,10 @@ const rp = (round_id, player_id, gross, putts, fw, gir) =>
   ({ round_id, player_id, gross_score: gross, putts, fairways_hit: fw, fairways_tot: 14, gir, gir_tot: 18 });
 
 const rounds = [
-  { id: "r1", data: "2026-02-08", observacoes: "Abertura da temporada, dia firme.", modo: "simples" },
-  { id: "r2", data: "2026-03-15", observacoes: "Vento forte no fundo.", modo: "simples" },
-  { id: "r3", data: "2026-04-19", observacoes: "", modo: "simples" },
-  { id: "r4", data: "2026-05-24", observacoes: "Churrasco depois 🍖", modo: "simples" },
+  { id: "r1", data: "2026-02-08", observacoes: "Abertura da temporada, dia firme.", modo: "simples", finalizada: true },
+  { id: "r2", data: "2026-03-15", observacoes: "Vento forte no fundo.", modo: "simples", finalizada: true },
+  { id: "r3", data: "2026-04-19", observacoes: "", modo: "simples", finalizada: true },
+  { id: "r4", data: "2026-05-24", observacoes: "Churrasco depois 🍖", modo: "simples", finalizada: true },
 ];
 
 const participants = [

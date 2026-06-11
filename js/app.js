@@ -169,40 +169,54 @@ function montarPerfilInicial() {
   };
 }
 
-function montarLogin() {
+function montarLogin(modo = "login") {
   document.body.classList.remove("logado");
   nav.innerHTML = "";
+  const signup = modo === "signup";
   app.innerHTML = `
     <div class="login-wrap">
       <div class="login-card">
         <div class="login-logo">⛳</div>
-        <h1>${APP_NOME}</h1>
-        <p class="login-sub">Acesso restrito ao grupo</p>
+        <h1>${signup ? "Criar conta" : APP_NOME}</h1>
+        <p class="login-sub">${signup ? "Crie seu acesso ao Ziccgolf" : "Entre com sua conta"}</p>
         ${!configurado() ? `<div class="aviso">⚠️ Configure o Supabase em <code>js/config.js</code> antes de usar.</div>` : ""}
         <form id="form-login">
           <input type="email" id="email" placeholder="E-mail" required autocomplete="email">
-          <input type="password" id="senha" placeholder="Senha" required autocomplete="current-password">
-          <button type="submit" class="btn btn-primary">Entrar</button>
-          <button type="button" id="btn-cadastrar" class="btn btn-ghost">Criar conta</button>
+          <input type="password" id="senha" placeholder="Senha" required autocomplete="${signup ? "new-password" : "current-password"}">
+          <button type="submit" class="btn btn-primary">${signup ? "Criar conta" : "Entrar"}</button>
         </form>
-        <div class="login-demo">
-          <button type="button" id="btn-demo" class="btn btn-ghost">🔎 Ver demonstração</button>
+        <div class="login-alt">
+          ${signup
+            ? `Já tem conta? <a href="#" id="ir-login">Entrar</a>`
+            : `Ainda não tem conta? <a href="#" id="ir-signup">Criar conta</a>`}
         </div>
+        ${signup ? "" : `<div class="login-demo"><button type="button" id="btn-demo" class="btn btn-ghost">🔎 Ver demonstração</button></div>`}
       </div>
     </div>`;
-  app.querySelector("#btn-demo").onclick = () => { location.href = location.pathname + "?demo=1"; };
-  const form = app.querySelector("#form-login");
   const email = () => app.querySelector("#email").value.trim();
   const senha = () => app.querySelector("#senha").value;
-  form.onsubmit = async (e) => {
+
+  app.querySelector("#form-login").onsubmit = async (e) => {
     e.preventDefault();
-    try { await entrar(email(), senha()); } catch (err) { toast(err.message || "Falha no login", "erro"); }
-  };
-  app.querySelector("#btn-cadastrar").onclick = async () => {
     if (!email() || !senha()) return toast("Preencha e-mail e senha", "erro");
-    try { await cadastrar(email(), senha()); toast("Conta criada! Verifique seu e-mail se necessário."); }
-    catch (err) { toast(err.message || "Falha ao cadastrar", "erro"); }
+    if (signup) {
+      const btn = e.submitter; btn.disabled = true; btn.textContent = "Criando...";
+      try {
+        await cadastrar(email(), senha());
+        toast("Conta criada! Confirme o e-mail e faça login.");
+        montarLogin("login");
+      } catch (err) { toast(err.message || "Falha ao criar conta", "erro"); btn.disabled = false; btn.textContent = "Criar conta"; }
+    } else {
+      try { await entrar(email(), senha()); } catch (err) { toast(err.message || "Falha no login", "erro"); }
+    }
   };
+
+  const irSignup = app.querySelector("#ir-signup");
+  if (irSignup) irSignup.onclick = (e) => { e.preventDefault(); montarLogin("signup"); };
+  const irLogin = app.querySelector("#ir-login");
+  if (irLogin) irLogin.onclick = (e) => { e.preventDefault(); montarLogin("login"); };
+  const btnDemo = app.querySelector("#btn-demo");
+  if (btnDemo) btnDemo.onclick = () => { location.href = location.pathname + "?demo=1"; };
 }
 
 window.addEventListener("hashchange", rotear);

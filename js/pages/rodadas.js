@@ -4,7 +4,7 @@ import { esc, fmtData, fmtInt, nomeJogador, toast, loading, anoAtual } from "../
 
 export default async function renderRodadas(app) {
   app.innerHTML = loading();
-  const dados = await carregarTemporada(anoAtual());
+  const dados = await carregarTemporada(anoAtual(), undefined, false); // todas, incl. em andamento
   const { players, rounds, participants, indMatches, teamMatches } = dados;
 
   if (!rounds.length) {
@@ -34,9 +34,9 @@ function cardRodada(r, players, participants, ind, team) {
   const nDup = team.filter(m => m.round_id === r.id).length;
   return `<div class="card-box rodada-card">
     <div class="card-head">
-      <span>${fmtData(r.data)}</span>
+      <span>${fmtData(r.data)} ${r.finalizada ? "" : '<span class="tag tag-andamento">em andamento</span>'}</span>
       <span class="rodada-acoes">
-        <a href="#/rodada/${r.id}">abrir</a>
+        <a href="#/rodada/${r.id}">${r.finalizada ? "ver" : "continuar"}</a>
         <a href="#" data-del="${r.id}" class="link-del">excluir</a>
       </span>
     </div>

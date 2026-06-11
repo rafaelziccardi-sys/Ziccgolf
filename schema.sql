@@ -22,6 +22,7 @@ create table if not exists rounds (
   observacoes  text,
   -- 'simples' = stats agregadas por rodada | 'detalhado' = buraco a buraco (v2)
   modo         text not null default 'simples',
+  finalizada   boolean not null default false,  -- só conta no ranking depois de encerrada
   criado_em    timestamptz not null default now()
 );
 

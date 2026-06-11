@@ -32,7 +32,7 @@ export default async function renderJogador(app, params) {
     </section>
 
     <div class="grid-stats">
-      ${card("Pontos totais", fmtInt(s.pontosTotal))}
+      ${card("Pontos totais", fmtInt(s.pontosTotal), `Stroke ${fmtInt(s.pontosStroke)} · Indiv ${fmtInt(s.pontosInd)} · Duplas ${fmtInt(s.pontosDupla)}`)}
       ${card("Pts / rodada", fmt(s.mediaPontos))}
       ${card("Vit. Stroke", fmtInt(s.strokeVitorias))}
       ${card("Top 3", fmtInt(s.top3))}

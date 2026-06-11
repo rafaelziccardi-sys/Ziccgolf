@@ -3,7 +3,8 @@
 //  próprio placar (autosave por buraco). Todos veem atualizar.
 // =============================================================
 import {
-  carregarRodada, jogadoresDoGrupo, meuJogador, entrarNaRodada, sairDaRodada,
+  carregarRodada, jogadoresDoGrupo, meuJogador, meusGrupos, entrarNaRodada, sairDaRodada,
+  finalizarRodada, reabrirRodada,
   salvarBuraco, salvarMatchInd, salvarMatchDupla, excluirMatchInd, excluirMatchDupla,
 } from "../db.js";
 import { PAR_BURACOS, PAR_TOTAL, N_FAIRWAYS } from "../config.js";
@@ -25,39 +26,47 @@ export default async function renderRodada(app, params) {
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   app.innerHTML = loading();
 
-  const [players, me] = await Promise.all([jogadoresDoGrupo(), meuJogador()]);
+  const [players, me, grupos] = await Promise.all([jogadoresDoGrupo(), meuJogador(), meusGrupos()]);
   const meId = me?.id || null;
   const minhaGrade = novaGrade();
 
   let dados = await carregarRodada(roundId);
+  const meuRole = grupos.find(g => g.id === dados.round.group_id)?.role || "member";
   preencheGrade(minhaGrade, dados.holes, meId);
 
   render();
+  iniciarPoll();
 
-  pollTimer = setInterval(async () => {
-    if (!location.hash.includes("/rodada/" + roundId)) { clearInterval(pollTimer); pollTimer = null; return; }
-    try { dados = await carregarRodada(roundId); atualizarPlacar(); atualizarOutros(); atualizarMatches(); }
-    catch (e) { console.error(e); }
-  }, 10000);
+  function iniciarPoll() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    if (dados.round.finalizada) return; // rodada encerrada não precisa de ao vivo
+    pollTimer = setInterval(async () => {
+      if (!location.hash.includes("/rodada/" + roundId)) { clearInterval(pollTimer); pollTimer = null; return; }
+      try { dados = await carregarRodada(roundId); atualizarPlacar(); atualizarOutros(); atualizarMatches(); }
+      catch (e) { console.error(e); }
+    }, 10000);
+  }
 
   // -------- render principal (uma vez) --------
   function render() {
+    const fin = !!dados.round.finalizada;
     const souParticipante = dados.participants.some(p => p.player_id === meId);
     app.innerHTML = `
       <section class="hero hero-row">
-        <div><h1>Rodada ao vivo</h1><p class="hero-sub">${fmtData(dados.round.data)} · par ${PAR_TOTAL}</p></div>
+        <div><h1>${fin ? "Rodada encerrada" : "Rodada ao vivo"}</h1><p class="hero-sub">${fmtData(dados.round.data)} · par ${PAR_TOTAL}</p></div>
         <a href="#/rodadas" class="btn btn-ghost btn-sm">← rodadas</a>
       </section>
+      ${fin ? `<div class="encerrada-banner">🏁 Rodada encerrada — resultados no ranking${meuRole === "admin" ? ` · <a href="#" id="reabrir">reabrir</a>` : ""}</div>` : ""}
 
       <div class="card-box">
-        <div class="card-head"><span>Placar</span><span class="ao-vivo">● ao vivo</span></div>
+        <div class="card-head"><span>Placar${fin ? " final" : ""}</span>${fin ? "" : '<span class="ao-vivo">● ao vivo</span>'}</div>
         <div id="placar"></div>
       </div>
 
-      <div id="meu-bloco">${blocoMeu(souParticipante)}</div>
+      ${fin ? "" : `<div id="meu-bloco">${blocoMeu(souParticipante)}</div>`}
 
       <div class="card-box">
-        <div class="card-head"><span>Outros jogadores</span></div>
+        <div class="card-head"><span>${fin ? "Jogadores" : "Outros jogadores"}</span></div>
         <div id="outros"></div>
       </div>
 
@@ -68,7 +77,7 @@ export default async function renderRodada(app, params) {
     atualizarPlacar();
     atualizarOutros();
     atualizarMatches();
-    if (souParticipante) { updateMeuTotais(); ligarGrade(); }
+    if (!fin && souParticipante) { updateMeuTotais(); ligarGrade(); }
     ligarBotoes();
   }
 
@@ -81,7 +90,10 @@ export default async function renderRodada(app, params) {
     return `<div class="card-box">
       <div class="card-head"><span>Seu placar — ${esc(me.nome)}</span><a href="#" id="sair-rodada" class="link-del">sair</a></div>
       <div class="totais" id="meu-totais"></div>
-      ${gradeHtml(minhaGrade)}</div>`;
+      ${gradeHtml(minhaGrade)}
+      <button type="button" class="btn btn-primary btn-lg" id="finalizar" style="margin-top:12px">🏁 Finalizar jogo</button>
+      <p class="hint" style="text-align:center;margin-top:6px">Encerra a rodada e manda os scores pro ranking.</p>
+    </div>`;
   }
 
   // -------- placar (leaderboard) --------
@@ -102,8 +114,9 @@ export default async function renderRodada(app, params) {
   // -------- outros jogadores (strip de score read-only) --------
   function atualizarOutros() {
     const el = app.querySelector("#outros"); if (!el) return;
-    const outros = dados.participants.filter(p => p.player_id !== meId);
-    if (!outros.length) { el.innerHTML = `<div class="vazio">Sem outros jogadores ainda.</div>`; return; }
+    const fin = !!dados.round.finalizada;
+    const outros = fin ? dados.participants : dados.participants.filter(p => p.player_id !== meId);
+    if (!outros.length) { el.innerHTML = `<div class="vazio">Sem jogadores ainda.</div>`; return; }
     el.innerHTML = outros.map(p => {
       const st = statsJogador(p);
       return `<div class="outro">
@@ -221,6 +234,24 @@ export default async function renderRodada(app, params) {
       e.preventDefault();
       if (!confirm("Sair da rodada apaga o seu placar dela. Continuar?")) return;
       try { await sairDaRodada(roundId, meId); for (const g of minhaGrade) Object.assign(g, { score: "", putts: "", bunker: "", gir: false, fir: false }); dados = await carregarRodada(roundId); render(); }
+      catch (err) { toast(err.message || "Erro", "erro"); }
+    };
+    const bf = app.querySelector("#finalizar");
+    if (bf) bf.onclick = async () => {
+      if (!confirm("Finalizar a rodada? Os scores entram no ranking e a rodada fica encerrada.")) return;
+      bf.disabled = true; bf.textContent = "Finalizando...";
+      try {
+        await finalizarRodada(roundId);
+        if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+        dados = await carregarRodada(roundId); render();
+        toast("Rodada encerrada! 🏁");
+      } catch (err) { toast(err.message || "Erro", "erro"); bf.disabled = false; bf.textContent = "🏁 Finalizar jogo"; }
+    };
+    const br = app.querySelector("#reabrir");
+    if (br) br.onclick = async (e) => {
+      e.preventDefault();
+      if (!confirm("Reabrir a rodada para edição?")) return;
+      try { await reabrirRodada(roundId); dados = await carregarRodada(roundId); render(); iniciarPoll(); }
       catch (err) { toast(err.message || "Erro", "erro"); }
     };
   }

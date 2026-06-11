@@ -149,6 +149,17 @@ export async function entrarNaRodada(roundId, playerId) {
   if (error && error.code !== "23505") throw error; // ignora "já é participante"
 }
 
+export async function finalizarRodada(roundId) {
+  if (demoAtivo()) throw new Error(ERRO_DEMO);
+  const { error } = await sb.rpc("finalizar_rodada", { p_round: roundId });
+  if (error) throw error;
+}
+export async function reabrirRodada(roundId) {
+  if (demoAtivo()) throw new Error(ERRO_DEMO);
+  const { error } = await sb.rpc("reabrir_rodada", { p_round: roundId });
+  if (error) throw error;
+}
+
 export async function sairDaRodada(roundId, playerId) {
   if (demoAtivo()) throw new Error(ERRO_DEMO);
   await sb.from("hole_scores").delete().eq("round_id", roundId).eq("player_id", playerId);
@@ -196,13 +207,17 @@ function totaisDeHoleScores(rows) {
   return { gross_score: gs, putts: pt, bunker_total: bk, gir, fairways_hit: fir };
 }
 
-// Carrega TODA a temporada do GRUPO ATUAL (volume pequeno -> simples e rápido)
-export async function carregarTemporada(ano, groupId = grupoAtual()) {
+// Carrega a temporada do GRUPO ATUAL.
+// somenteFinalizadas=true (ranking/stats) -> só rodadas encerradas.
+// somenteFinalizadas=false (lista de Rodadas) -> todas, incl. em andamento.
+export async function carregarTemporada(ano, groupId = grupoAtual(), somenteFinalizadas = true) {
   if (demoAtivo()) return demoTemporada;
   const ini = `${ano}-01-01`, fim = `${ano}-12-31`;
+  let q = sb.from("rounds").select("*").eq("group_id", groupId).gte("data", ini).lte("data", fim);
+  if (somenteFinalizadas) q = q.eq("finalizada", true);
   const [players, rounds] = await Promise.all([
     jogadoresDoGrupo(groupId),
-    sb.from("rounds").select("*").eq("group_id", groupId).gte("data", ini).lte("data", fim).order("data", { ascending: false }).then(r => unwrap(r)),
+    q.order("data", { ascending: false }).then(r => unwrap(r)),
   ]);
   const roundIds = rounds.map(r => r.id);
   if (roundIds.length === 0)

@@ -272,7 +272,12 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--v
 .login-card h1 { margin: 6px 0 0; font-size: 24px; }
 .login-sub { color: var(--cinza-400); font-size: 13px; margin: 4px 0 18px; }
 .login-card form { display: flex; flex-direction: column; gap: 10px; }
+.login-alt { margin-top: 14px; font-size: 13px; color: var(--cinza-600); }
+.login-alt a { font-weight: 700; }
 .login-demo { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--cinza-200); }
+.encerrada-banner { background: var(--verde-claro); color: var(--verde-escuro); font-weight: 700; padding: 10px 14px; border-radius: 12px; margin-bottom: 14px; font-size: 14px; }
+.encerrada-banner a { text-decoration: underline; }
+.tag-andamento { background: var(--ouro); color: #3a2b06; }
 .aviso { background: #fff6e5; border: 1px solid #f0d089; color: #8a6d1f; padding: 10px; border-radius: 10px; font-size: 12px; margin-bottom: 14px; }
 #demo-banner { background: var(--ouro); color: #3a2b06; text-align: center; font-size: 12px; font-weight: 600; padding: 7px 12px; }
 #demo-banner a { color: #3a2b06; text-decoration: underline; font-weight: 700; }
